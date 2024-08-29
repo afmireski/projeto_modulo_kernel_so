@@ -29,9 +29,8 @@ static ssize_t proc_read(struct file *file, char __user *buf, size_t count, loff
 }
 
 // Estrutura de file_operations para mapear a função de leitura
-static struct file_operations proc_fops = {
-    .owner = THIS_MODULE,
-    .read = proc_read,
+static struct proc_ops proc_fops = {
+    .proc_read = proc_read,
 };
 
 // Função para interceptar uma syscall (exemplo com sys_open)
