@@ -3,12 +3,15 @@
  * Autores: André Felipe Mireski, Alexandre Tolomeotti, Victor Ângelo Souza Santos
  */
 
-#include <linux/kernel.h>     // Para funções do kernel
-#include <linux/module.h>     // Necessário para todos os módulos
-#include <linux/proc_fs.h>    // Para criar arquivos no /proc
-#include <linux/uaccess.h>    // Para copiar dados para o espaço do usuário
-#include <linux/sched.h>      // Para obter informações sobre processos
-#include <linux/syscalls.h>   // Para interceptar syscalls
+#include <linux/kernel.h>   // Para funções do kernel
+#include <linux/module.h>   // Necessário para todos os módulos
+#include <linux/proc_fs.h>  // Para criar arquivos no /proc
+#include <linux/uaccess.h>  // Para copiar dados para o espaço do usuário
+#include <linux/sched.h>    // Para obter informações sobre processos
+#include <linux/syscalls.h> // Para interceptar syscalls
+#include <linux/fs.h>
+#include <linux/file.h>
+#include <linux/err.h>
 
 // MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Módulo de Contador de Syscalls");
@@ -21,10 +24,11 @@ static struct proc_dir_entry *proc_file;
 static unsigned long syscall_count = 0;
 
 // Função de callback que será chamada quando o arquivo /proc/syscall_counter for lido
-static ssize_t proc_read(struct file *file, char __user *buf, size_t count, loff_t *pos) {
+static ssize_t proc_read(struct file *file, char __user *buf, size_t count, loff_t *pos)
+{
     char buffer[64];
     int len = sprintf(buffer, "Syscall count: %lu\n", syscall_count);
-    
+
     return simple_read_from_buffer(buf, count, pos, buffer, len);
 }
 
@@ -34,25 +38,70 @@ static struct proc_ops proc_fops = {
 };
 
 // Função para interceptar uma syscall (exemplo com sys_open)
-asmlinkage long my_sys_open(const char __user *filename, int flags, mode_t mode) {
+asmlinkage long my_sys_open(const char __user *filename, int flags, mode_t mode)
+{
+    struct file *file;
+    mm_segment_t old_fs;
+    long err = 0;
+
+    // Contabilizar a chamada
     syscall_count++;
-    return sys_open(filename, flags, mode); // Chama a syscall original
+
+    // Alocar memória para o caminho do arquivo (buffer de kernel)
+    char *kernel_filename = kmalloc(PATH_MAX, GFP_KERNEL);
+    if (!kernel_filename)
+    {
+        printk(KERN_ERR "Falha ao alocar memória para filename\n");
+        return -ENOMEM;
+    }
+
+    // Copiar o nome do arquivo do espaço de usuário para o espaço do kernel
+    if (copy_from_user(kernel_filename, filename, PATH_MAX))
+    {
+        kfree(kernel_filename);
+        printk(KERN_ERR "Falha ao copiar o nome do arquivo do espaço de usuário\n");
+        return -EFAULT;
+    }
+
+    old_fs = get_fs();
+    set_fs(KERNEL_DS); // Muda o segmento de memória para o espaço do kernel
+
+    // Tentar abrir o arquivo no kernel
+    file = filp_open(kernel_filename, flags, mode);
+    if (IS_ERR(file))
+    {
+        err = PTR_ERR(file);
+        printk(KERN_ERR "Falha ao abrir arquivo: %ld\n", err);
+    }
+    else
+    {
+        // Sucesso: Agora você pode fazer outras operações como vfs_read(), vfs_write(), etc.
+        filp_close(file, NULL);
+    }
+
+    set_fs(old_fs);         // Restaurar o segmento de memória original
+    kfree(kernel_filename); // Liberar memória alocada
+
+    return err;
 }
 
 // Função de inicialização do módulo
-static int __init syscall_counter_init(void) {
+static int __init syscall_counter_init(void)
+{
     // Cria o arquivo /proc/syscall_counter
     proc_file = proc_create(PROC_NAME, 0, NULL, &proc_fops);
-    if (!proc_file) {
+    if (!proc_file)
+    {
         return -ENOMEM;
     }
-    
+
     printk(KERN_INFO "Syscall Counter Module Loaded\n");
     return 0;
 }
 
 // Função de saída do módulo
-static void __exit syscall_counter_exit(void) {
+static void __exit syscall_counter_exit(void)
+{
     // Remove o arquivo /proc/syscall_counter
     proc_remove(proc_file);
     printk(KERN_INFO "Syscall Counter Module Unloaded\n");
