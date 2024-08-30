@@ -12,8 +12,9 @@
 #include <linux/fs.h>
 #include <linux/file.h>
 #include <linux/err.h>
+#include <linux/slab.h>     // Para kmalloc e kfree
 
-// MODULE_LICENSE("GPL");
+MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Módulo de Contador de Syscalls");
 MODULE_VERSION("0.1");
 
@@ -41,11 +42,11 @@ static struct proc_ops proc_fops = {
 asmlinkage long my_sys_open(const char __user *filename, int flags, mode_t mode)
 {
     struct file *file;
-    mm_segment_t old_fs;
     long err = 0;
 
     // Contabilizar a chamada
     syscall_count++;
+    printk("Interceptação ocorreu\n");
 
     // Alocar memória para o caminho do arquivo (buffer de kernel)
     char *kernel_filename = kmalloc(PATH_MAX, GFP_KERNEL);
@@ -63,10 +64,7 @@ asmlinkage long my_sys_open(const char __user *filename, int flags, mode_t mode)
         return -EFAULT;
     }
 
-    old_fs = get_fs();
-    set_fs(KERNEL_DS); // Muda o segmento de memória para o espaço do kernel
-
-    // Tentar abrir o arquivo no kernel
+    // Tentar abrir o arquivo no kernel sem alterar o segmento de memória
     file = filp_open(kernel_filename, flags, mode);
     if (IS_ERR(file))
     {
@@ -79,7 +77,6 @@ asmlinkage long my_sys_open(const char __user *filename, int flags, mode_t mode)
         filp_close(file, NULL);
     }
 
-    set_fs(old_fs);         // Restaurar o segmento de memória original
     kfree(kernel_filename); // Liberar memória alocada
 
     return err;
