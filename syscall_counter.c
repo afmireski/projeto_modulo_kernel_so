@@ -36,18 +36,6 @@ static struct kprobe kp = {
 // Função que será chamada quando a função `sys_newuname` for interceptada
 static int handler_pre(struct kprobe *p, struct pt_regs *regs)
 {
-    const char __user *filename = (const char __user *)regs->si; // Argumento 1 de sys_newuname
-    char fname[256];
-    long ret;
-
-    // Copia o nome do arquivo do espaço do usuário para o kernel
-    ret = strncpy_from_user(fname, filename, sizeof(fname) - 1);
-    if (ret > 0) {
-        fname[ret] = '\0';
-        printk(KERN_INFO "sys_newuname chamada com filename: %s\n", fname);
-    } else {
-        printk(KERN_INFO "sys_newuname chamada com filename não acessível\n");
-    }
     
     syscall_count++;
 
