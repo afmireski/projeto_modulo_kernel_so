@@ -39,7 +39,7 @@ static struct proc_ops proc_fops = {
 
 // Estrutura de kprobe
 static struct kprobe kp = {
-    .symbol_name = "TARGET_SYSCALL", // Nome da função que queremos monitorar
+    .symbol_name = TARGET_SYSCALL, // Nome da função que queremos monitorar
 };
 
 /**
@@ -83,7 +83,7 @@ static int __init kprobe_init(void)
         return -ENOMEM;
     }
 
-    printk(KERN_INFO "Syscall Counter Module Loaded\n");
+    printk(KERN_INFO "Syscall Counter Module Carregado\n");
     return 0;
 }
 /**
@@ -94,7 +94,7 @@ static void __exit kprobe_exit(void)
     unregister_kprobe(&kp);
     printk(KERN_INFO "kprobe desvinculado\n");
     proc_remove(proc_file);
-    printk(KERN_INFO "Syscall Counter Module Unloaded\n");
+    printk(KERN_INFO "Syscall Counter Module Descarregado\n");
 }
 
 module_init(kprobe_init);
