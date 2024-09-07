@@ -7,10 +7,10 @@ KDIR := /lib/modules/$(shell uname -r)/build
 # Diretório atual
 PWD := $(shell pwd)
 
-# Alvo de compilação do módulo
+# Compilar o módulo
 all:
 	$(MAKE) -C $(KDIR) M=$(PWD) modules
 
-# Alvo para limpar os arquivos gerados pela compilação
+# Limpar os arquivos gerados pela compilação
 clean:
 	$(MAKE) -C $(KDIR) M=$(PWD) clean
