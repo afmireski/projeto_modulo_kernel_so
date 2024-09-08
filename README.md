@@ -1,7 +1,8 @@
 # Projeto 02 da Disciplina de SO sobre módulos do kernel linux
 
 Para esse projeto foi implementado um módulo simples para o kernel linux, que consiste em um contador de `syscalls` usando a biblioteca `kprobes`.  
-Sempre que o `kprobes` detecta que a `syscall` informada em `TARGET_SYSCALL` foi chamada, ele incremente um contador que pode ter seu valor acessado via `cat /proc/syscall_counter`.
+Sempre que o `kprobes` detecta que a `syscall` informada no arquivo `TARGET_PROC` foi chamada, ele incremente um contador que pode ter seu valor acessado via `cat /proc/COUNTER_PROC`.
+É importante ressaltar que o kprobes não monitora especificamente syscalls, mas sim funções do kernel.
 
 ## Setup
 ```bash
@@ -24,17 +25,17 @@ sudo dmesg -wH # wH implica num modo watch
 sudo insmod syscall_counter.ko
 
 # Verifique que o módulo foi carregado com a mensagem:
-## "Syscall Counter Module Carregado"
+## "Syscall Counter Module carregad"
 
 # Para descarregar o módulo
 rmmod syscall_counter
 
 # Verifique que o módulo foi descarregado com mensagem:
-## "Syscall Counter Module Descarregado"
+## "Syscall Counter Module descarregado"
 ```
 
 ## Teste
-Suponha que a syscall monitorada seja a `sys_newuname`, então sempre que `uname -a` for chamado, o contador será incrementado.
+Por padrão a syscall monitorada é a `sys_newuname`, então sempre que `uname -a` for chamado, o contador será incrementado.
 ```bash
 # Monitore os logs pelo dmesg
 sudo dmesg -wH # wH implica num modo watch
@@ -43,6 +44,23 @@ sudo dmesg -wH # wH implica num modo watch
 uname -a
 
 # Verifique que o contador aumentou
-cat /proc/syscall_counter
+cat /proc/COUNTER_PROC
 ```
 
+A syscall monitorada pode ser controlada escrevendo para o arquivo `TARGET_PROC`. O `symbol` que o `kprobe` aceita, geralmente, vêm do arquivo `/proc/kallsyms`:
+```bash
+cat /proc/kallsyms | grep "<syscall>"
+
+# Exemplo "sys_open"
+## Escolher __x64_sys_open, geralmente é o equivalente a syscall em arquiteturas x64
+
+# Escrever para o TARGET_PROC
+sudo echo -n "<kallsyms_symbol>" > /proc/TARGET_PROC # o -n remove caracteres de quebra de linha
+
+# Se tudo ocorrer bem, o dmesg deve exibir a mensagem:
+# kprobe registrado para syscall: <kallsyms_symbol>
+```
+### Lista de syscalls interessantes
+- `sys_open`: `__x64_sys_open`
+- `sys_newuname`: `__x64_sys_newuname`
+- `sys_open`: `__x64_sys_open`
