@@ -61,6 +61,6 @@ sudo echo -n "<kallsyms_symbol>" > /proc/TARGET_PROC # o -n remove caracteres de
 # kprobe registrado para syscall: <kallsyms_symbol>
 ```
 ### Lista de syscalls interessantes
-- `sys_open`: `__x64_sys_open`
-- `sys_newuname`: `__x64_sys_newuname`
-- `sys_open`: `__x64_sys_open`
+- `sys_open`: `__x64_sys_open`, geralmente não é chamada, boa para testar o zeramento do contador.
+- `sys_newuname`: `__x64_sys_newuname`, não gera tantas chamadas, boa para monitorar o funcionamento.
+- `sys_read`: `__x64_sys_read`, gera muitas chamadas.
